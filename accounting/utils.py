@@ -123,9 +123,32 @@ class PolicyAccounting(object):
                 continue
             else:
                 print "THIS POLICY SHOULD HAVE CANCELED"
-                break
+                return True
         else:
             print "THIS POLICY SHOULD NOT CANCEL"
+            return False
+
+    def cancel_policy(self, date_cursor=None, desc=None):
+        """
+         Cancel policy for reason specified in desc or automatically cancel unpaid policy
+        """
+        if not date_cursor:
+            date_cursor = datetime.now().date()
+
+        # Cancel the policy for reason specified in desc
+        if desc:
+            self.policy.status = 'Canceled'
+            self.policy.cancel_date = date_cursor
+            self.policy.cancel_desc = desc
+            db.session.commit()
+        # Cancel the unpaid policy
+        elif self.evaluate_cancel(date_cursor):
+            self.policy.status = 'Canceled'
+            self.policy.cancel_date = date_cursor
+            self.policy.cancel_desc = "Unpaid"
+            db.session.commit()
+        else:
+            return
 
     def make_invoices(self):
         """
