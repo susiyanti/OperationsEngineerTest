@@ -60,12 +60,18 @@ class PolicyAccounting(object):
             except:
                 pass
 
-        payment = Payment(self.policy.id,
-                          contact_id,
-                          amount,
-                          date_cursor)
-        db.session.add(payment)
-        db.session.commit()
+        # If a policy is in cancellation pending due to non_pay, only an
+        # agent should be able to make a payment on it
+        if self.evaluate_cancellation_pending_due_to_non_pay(date_cursor) and contact_id is not self.policy.agent:
+            print "Contact your agent for making payment"
+            return None
+        else:
+            payment = Payment(self.policy.id,
+                              contact_id,
+                              amount,
+                              date_cursor)
+            db.session.add(payment)
+            db.session.commit()
 
         return payment
 
@@ -76,7 +82,28 @@ class PolicyAccounting(object):
          being paid in full. However, it has not necessarily
          made it to the cancel_date yet.
         """
-        pass
+        if not date_cursor:
+            date_cursor = datetime.now().date()
+
+        # Get invoices that has passed due date but not passed cancel date
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
+                                .filter(Invoice.due_date < date_cursor)\
+                                .filter(Invoice.cancel_date > date_cursor)\
+                                .order_by(Invoice.bill_date)\
+                                .all()
+
+        # Check those invoices for balances
+        for invoice in invoices:
+            if not self.return_account_balance(invoice.cancel_date):
+                continue
+            else:
+                #Update policy status
+                self.policy.status = "Cancellation pending due to non-pay"
+                db.session.commit()
+                return True
+                break
+        else:
+            return False
 
     def evaluate_cancel(self, date_cursor=None):
         """
