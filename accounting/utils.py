@@ -23,6 +23,9 @@ class PolicyAccounting(object):
             self.make_invoices()
 
     def return_account_balance(self, date_cursor=None):
+        """
+         Calculate account balance by adding all amount due from invoices and subtract from all payments
+        """
         if not date_cursor:
             date_cursor = datetime.now().date()
 
@@ -43,6 +46,11 @@ class PolicyAccounting(object):
         return due_now
 
     def make_payment(self, contact_id=None, date_cursor=None, amount=0):
+        """
+         Add new payment data to database.
+         Use current date if date_cursor argument is not provided
+         Use named insured id as contact id if not provided
+        """
         if not date_cursor:
             date_cursor = datetime.now().date()
 
@@ -71,6 +79,10 @@ class PolicyAccounting(object):
         pass
 
     def evaluate_cancel(self, date_cursor=None):
+        """
+         Check if a policy should have canceled
+         based on invoices that's not paid by cancel_date
+        """
         if not date_cursor:
             date_cursor = datetime.now().date()
 
@@ -88,8 +100,10 @@ class PolicyAccounting(object):
         else:
             print "THIS POLICY SHOULD NOT CANCEL"
 
-
     def make_invoices(self):
+        """
+         Create invoices for policy based on billing_schedule
+        """
         for invoice in self.policy.invoices:
             invoice.delete()
 
