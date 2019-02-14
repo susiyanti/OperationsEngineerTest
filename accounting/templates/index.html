@@ -2,14 +2,162 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Some sort of title?</title>
-  <meta name="description" content="What is this?">
-  <meta name="author" content="Who?">
+  <title>Policy</title>
+ <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <!--[if lt IE 9]>
 <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
 <![endif]-->
 </head>
 <body>
-    <p>Your server is working.</p>
+
+	<div class="container-fluid">
+    <nav class="navbar fixed-top col-md-12">
+      <div class="col-md-4"></div>
+      <div class="col-md-4"><span class="navbar-brand heading"><strong>Policies</strong></span></div>
+      <div class="col-md-4"></div>
+    </nav>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="col-md-4"></div>
+        <div class="col-md-4">
+          <form data-bind="submit: search">
+            <div class="form-group row">
+              <div class="col-md-12">
+                <div class="col-md-4">
+                  <label for="policy_number">Policy Number</label>
+                </div>
+                <div class="col-md-8">
+                  <input data-bind="value: policy_id" placeholder="Policy number" type="number" class="form-control" id="policy_number">
+                </div>
+              </div>
+            </div>
+            <div class="form-group row">
+              <div class="col-md-12">
+                <div class="col-md-4">
+                  <label for="invoice_date">Invoice Date</label>
+                </div>
+                <div class="col-md-8">
+                  <input data-bind="value: policy_date" placeholder="mm/dd/yyyy" type="date" class="form-control" id="invoice_date" >
+                </div>
+              </div>
+            </div>
+            <div class="form-group row">
+              <div class="col-md-12">
+                <div class="col-md-4"></div>
+                <div class="col-md-4">
+                  <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+                <div class="col-md-4"></div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="col-md-4"></div>
+      </div>
+    </div>
+
+    <hr>
+    <div class="col-md-12" data-bind="if: error">
+      <div class="alert alert-danger" role="alert">
+        <p class="text-center" data-bind="text: error_message"><strong></strong></p>
+      </div>
+    </div>
+    <div class="container-fluid" data-bind="if: policy().id">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <h3 class="heading"><strong>Policy Details</strong></h3>
+          </div>
+        </div>
+        <div class="row align-items-start">
+          <div class="col-md-12">
+            <div class="col-md-4">
+              <strong>Policy:</strong>
+              <span data-bind="text: policy().id"></span><br>
+              <strong>Insured Name:</strong>
+              <span data-bind="text: policy().insured"></span><br>
+              <strong>Billing Schedule:</strong>
+              <span data-bind="text: policy().billing_schedule"></span><br>
+            </div>
+            <div class="col-md-4">
+              <strong>Agent Name:</strong>
+              <span data-bind="text: policy().agent_name"></span><br>
+              <strong>Current Balance:</strong>
+              <span data-bind="text: policy().balance"></span><br>
+              <strong>Annual Premium:</strong>
+              <span data-bind="text: policy().annual_premium"></span><br>
+            </div>
+            <div class="col-md-4">
+              <strong>Status:</strong>
+              <span data-bind="text: policy().status"></span><br>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr>
+      <div class="container">
+        <div class="row">
+          <div class="col-md-8" data-bind="if: policy().invoices().length == 0">
+            <h3 class="heading"><strong>No Invoices</strong></h3>
+          </div>
+        </div>
+        <div class="col-md-12" data-bind="if: policy().invoices().length > 0">
+          <h3 class="heading"><strong>Invoices</strong></h3>
+          <div class="table-responsive">
+            <table class="table table-bordered" style="margin-bottom: 0px;">
+              <thead>
+                <tr>
+                  <td><strong>Bill Date</strong></td>
+                  <td><strong>Due Date</strong></td>
+                  <td><strong>Cancel Date</strong></td>
+                  <td><strong>Amount Due</strong></td>
+                </tr>
+              </thead>
+              <tbody data-bind="foreach: policy().invoices">
+                <tr>
+                  <td data-bind="text: bill_date"></td>
+                  <td data-bind="text: due_date"></td>
+                  <td data-bind="text: cancel_date"></td>
+                  <td data-bind="text: amount_due"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <hr>
+        <div class="row">
+          <div class="col-md-12" data-bind="if: policy().payments().length == 0">
+            <h3 class="heading"><strong>No Payments</strong></h3>
+          </div>
+          <div class="col-md-12" data-bind="if: policy().payments().length > 0">
+              <h3 class="heading"><strong>Payments</strong></h3>
+                <div class="table-responsive">
+                  <table class="table table-bordered" style="margin-bottom: 0px;">
+                    <thead>
+                      <tr>
+                        <td><strong>Date</strong></td>
+                        <td><strong>Amount Paid</strong></td>
+                      </tr>
+                    </thead>
+                    <tbody data-bind="foreach: policy().payments">
+                      <tr>
+                        <td data-bind="text: transaction_date"></td>
+                        <td data-bind="text: amount_paid"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.2/knockout-min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout-validation/2.0.3/knockout.validation.min.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
