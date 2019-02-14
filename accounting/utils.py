@@ -97,9 +97,6 @@ class PolicyAccounting(object):
             if not self.return_account_balance(invoice.cancel_date):
                 continue
             else:
-                #Update policy status
-                self.policy.status = "Cancellation pending due to non-pay"
-                db.session.commit()
                 return True
                 break
         else:
@@ -371,4 +368,3 @@ def insert_data():
     payment_for_p2 = Payment(p2.id, anna_white.id, 400, date(2015, 2, 1))
     db.session.add(payment_for_p2)
     db.session.commit()
-

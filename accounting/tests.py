@@ -14,6 +14,7 @@ Test Suite for Accounting
 #######################################################
 """
 
+
 class TestBillingSchedules(unittest.TestCase):
 
     @classmethod
@@ -38,30 +39,98 @@ class TestBillingSchedules(unittest.TestCase):
         db.session.commit()
 
     def setUp(self):
-        pass
+        self.payments = []
 
     def tearDown(self):
         for invoice in self.policy.invoices:
             db.session.delete(invoice)
+        for payment in self.payments:
+            db.session.delete(payment)
         db.session.commit()
 
     def test_annual_billing_schedule(self):
         self.policy.billing_schedule = "Annual"
-        #No invoices currently exist
+        # No invoices currently exist
         self.assertFalse(self.policy.invoices)
-        #Invoices should be made when the class is initiated
+        # Invoices should be made when the class is initiated
         pa = PolicyAccounting(self.policy.id)
         self.assertEquals(len(self.policy.invoices), 1)
         self.assertEquals(self.policy.invoices[0].amount_due, self.policy.annual_premium)
 
     def test_monthly_billing_schedule(self):
         self.policy.billing_schedule = "Monthly"
-        #No invoices currently exist
+        # No invoices currently exist
         self.assertFalse(self.policy.invoices)
-        #Invoices should be made when the class is initiated
+        # Invoices should be made when the class is initiated
         pa = PolicyAccounting(self.policy.id)
         self.assertEquals(len(self.policy.invoices), 12)
         self.assertEquals(self.policy.invoices[1].amount_due, self.policy.annual_premium/12)
+
+    def test_change_billing_schedule_q_m_p(self):
+        """
+         Test change billing schedule from quarterly to monthly
+         when already paid first invoices
+        """
+        self.policy.billing_schedule = "Quarterly"
+        # No invoices currently exist
+        self.assertFalse(self.policy.invoices)
+        # Invoices should be made when the class is initiated
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(len(self.policy.invoices), 4)
+        self.assertEquals(self.policy.invoices[1].amount_due, self.policy.annual_premium/4)
+        # Make payment
+        self.payments.append(pa.make_payment(self.policy.agent, date(2015,1,1), 300))
+        # Change billing schedulte to Monthly
+        pa.change_billing_schedule('Monthly')
+        # Assert that total 13 invoices exist (4 old, 9 new)
+        self.assertEquals(len(self.policy.invoices), 13)
+
+    def test_change_billing_schedule_a_m(self):
+        self.policy.billing_schedule = "Annual"
+        # No invoices currently exist
+        self.assertFalse(self.policy.invoices)
+        # Invoices should be made when the class is initiated
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(len(self.policy.invoices), 1)
+        self.assertEquals(self.policy.invoices[0].amount_due, self.policy.annual_premium/1)
+        # Make payment
+        self.payments.append(pa.make_payment(self.policy.agent, date(2015,1,1), 1200))
+        # Change billing schedule to Monthly
+        pa.change_billing_schedule('Monthly')
+        # Shoulnt be able to change schedule cause paid already, invoices should still be one
+        self.assertEquals(len(self.policy.invoices), 1)
+
+    def test_change_billing_schedule_q_m_np(self):
+        """
+         Test change billing schedule from quarterly to monthly
+         when no payment made yet
+        """
+        self.policy.billing_schedule = "Quarterly"
+        # No invoices currently exist
+        self.assertFalse(self.policy.invoices)
+        # Invoices should be made when the class is initiated
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(len(self.policy.invoices), 4)
+        self.assertEquals(self.policy.invoices[1].amount_due, self.policy.annual_premium/4)
+        # Change billing schedule
+        pa.change_billing_schedule('Monthly')
+        # invoices count should be 16 (4 old, 12 new)
+        self.assertEquals(len(self.policy.invoices), 16)
+
+    def test_change_billing_schedule_tp_a(self):
+        """
+         Test change billing from two pay to annual
+        """
+        self.policy.billing_schedule = "Two-Pay"
+        # No invoices currently exist
+        self.assertFalse(self.policy.invoices)
+        # Invoices should be made when the class is initiated
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(len(self.policy.invoices), 2)
+        self.assertEquals(self.policy.invoices[1].amount_due, self.policy.annual_premium/2)
+        pa.change_billing_schedule('Annual')
+        # Invoice count should still be 2 cause unsuccess changing
+        self.assertEquals(len(self.policy.invoices), 2)
 
 
 class TestReturnAccountBalance(unittest.TestCase):
@@ -122,3 +191,73 @@ class TestReturnAccountBalance(unittest.TestCase):
         self.payments.append(pa.make_payment(contact_id=self.policy.named_insured,
                                              date_cursor=invoices[1].bill_date, amount=600))
         self.assertEquals(pa.return_account_balance(date_cursor=invoices[1].bill_date), 0)
+
+
+class TestEvaluatePendingAndCancel(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.test_agent = Contact('Test Agent', 'Agent')
+        cls.test_insured = Contact('Test Insured', 'Named Insured')
+        db.session.add(cls.test_agent)
+        db.session.add(cls.test_insured)
+        db.session.commit()
+
+        cls.policy = Policy('Test Policy', date(2015, 1, 1), 1200)
+        db.session.add(cls.policy)
+        cls.policy.named_insured = cls.test_insured.id
+        cls.policy.agent = cls.test_agent.id
+        db.session.commit()
+
+    @classmethod
+    def tearDownClass(cls):
+        db.session.delete(cls.test_insured)
+        db.session.delete(cls.test_agent)
+        db.session.delete(cls.policy)
+        db.session.commit()
+
+    def setUp(self):
+        self.payments = []
+
+    def tearDown(self):
+        for invoice in self.policy.invoices:
+            db.session.delete(invoice)
+        for payment in self.payments:
+            db.session.delete(payment)
+        db.session.commit()
+
+    def test_evaluate_pending(self):
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        # Test Evaluate cancellation pending
+        self.assertEquals(pa.evaluate_cancellation_pending_due_to_non_pay(date(2015, 2, 2)), True)
+        # Made payment by insured
+        p = pa.make_payment(date_cursor=date(2015, 2, 2), amount=1200)
+        # None return cause payment must be made by agent
+        self.assertEquals(p, None)
+
+    def test_cancel_policy(self):
+        """
+         Test canceling policy caused of unpaid invoices
+        """
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        # Cancel policy
+        pa.cancel_policy()
+        # Policy canceled cause of unpaid
+        self.assertEquals(self.policy.status, "Canceled")
+        self.assertEquals(self.policy.cancel_desc, "Unpaid")
+
+    def test_cancel_policy_other(self):
+        """
+         Test canceling policy caused of other reason
+        """
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        self.payments.append(pa.make_payment(self.policy.agent,
+                                             date(2015, 1, 1), 1200))
+        # Cancel policy for underwriting
+        pa.cancel_policy(desc="Underwriting")
+        # Check wheter policy canceled with provided reason
+        self.assertEquals(self.policy.status, "Canceled")
+        self.assertEquals(self.policy.cancel_desc, "Underwriting")
